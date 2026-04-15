@@ -1,0 +1,321 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Expense Dashboard</title>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
+
+<style>
+body{
+  font-family: Arial;
+  background:#eef2f7;
+  padding:10px;
+}
+
+.card{
+  background:#fff;
+  padding:10px;
+  margin:8px 0;
+  border-radius:8px;
+}
+
+button{
+  padding:8px 12px;
+  margin:4px;
+  border:none;
+  border-radius:5px;
+  cursor:pointer;
+}
+
+table{
+  width:100%;
+  border-collapse:collapse;
+  table-layout:fixed;
+}
+
+th,td{
+  border:1px solid #ddd;
+  padding:6px;
+  text-align:center;
+  word-break:break-word;
+}
+
+th{
+  background:#007bff;
+  color:white;
+}
+
+tfoot td{
+  font-weight:bold;
+  background:#f1f1f1;
+}
+
+input{
+  width:100%;
+  height:36px;
+  text-align:center;
+  border:none;
+  font-size:16px;
+}
+
+canvas{
+  width:100% !important;
+  height:auto !important;
+  display:block;
+  margin:auto;
+}
+
+@media (max-width:768px){
+  table{ font-size:13px; }
+  th,td{ padding:5px; }
+}
+
+body.exporting button{
+  display:none;
+}
+</style>
+</head>
+
+<body>
+
+<div id="captureArea">
+
+<h2>💰 Expense Dashboard</h2>
+
+<div class="card" style="text-align:center;">
+<input type="month" id="monthPicker">
+</div>
+
+<div class="card" style="text-align:center;">
+<button onclick="addRow()">➕ Add Row</button>
+<button onclick="removeRow()">➖ Remove Row</button>
+<button onclick="downloadImage()">📸 Download Images</button>
+<button onclick="downloadPDF()">📄 Download PDF</button>
+</div>
+
+<div class="card" id="tableArea">
+<table>
+<thead>
+<tr>
+<th>Family</th><th>$</th>
+<th>Car</th><th>$</th>
+<th>My</th><th>$</th>
+<th>Her</th><th>$</th>
+</tr>
+</thead>
+
+<tbody id="rows"></tbody>
+
+<tfoot>
+<tr>
+<td>Total</td><td id="f">$0</td>
+<td>Total</td><td id="c">$0</td>
+<td>Total</td><td id="m">$0</td>
+<td>Total</td><td id="h">$0</td>
+</tr>
+<tr>
+<td colspan="7">Grand</td>
+<td id="g">$0</td>
+</tr>
+<tr>
+<td colspan="7">Without Car</td>
+<td id="w">$0</td>
+</tr>
+</tfoot>
+</table>
+</div>
+
+<div class="card" id="chartArea">
+<canvas id="chart"></canvas>
+</div>
+
+</div>
+
+<script>
+
+const cols=["family","car","my","her"];
+const tbody=document.getElementById("rows");
+
+// ➕ Add Row
+function addRow(data=[]){
+  let tr=document.createElement("tr");
+
+  tr.innerHTML=`
+<td><input></td><td><input class="family"></td>
+<td><input></td><td><input class="car"></td>
+<td><input></td><td><input class="my"></td>
+<td><input></td><td><input class="her"></td>
+`;
+
+  tbody.appendChild(tr);
+
+  const inputs = tr.querySelectorAll("input");
+
+  inputs.forEach((i, idx) => {
+
+    if (data[idx]) i.value = data[idx];
+
+    i.addEventListener("input", () => {
+      i.value = i.value.replace(/[^0-9.]/g, '');
+      calculate();
+      save();
+    });
+
+    i.addEventListener("keydown", (e) => {
+
+      const currentRow = i.closest("tr");
+      const allRows = Array.from(tbody.querySelectorAll("tr"));
+      const rowIndex = allRows.indexOf(currentRow);
+      const colIndex = Array.from(currentRow.querySelectorAll("input")).indexOf(i);
+
+      let target;
+
+      if (e.key === "ArrowRight") {
+        target = currentRow.querySelectorAll("input")[colIndex + 1];
+      }
+
+      if (e.key === "ArrowLeft") {
+        target = currentRow.querySelectorAll("input")[colIndex - 1];
+      }
+
+      if (e.key === "ArrowDown" || e.key === "Enter") {
+        const nextRow = allRows[rowIndex + 1];
+        if (nextRow) target = nextRow.querySelectorAll("input")[colIndex];
+      }
+
+      if (e.key === "ArrowUp") {
+        const prevRow = allRows[rowIndex - 1];
+        if (prevRow) target = prevRow.querySelectorAll("input")[colIndex];
+      }
+
+      if (target) {
+        e.preventDefault();
+        target.focus();
+      }
+
+    });
+
+  });
+}
+
+// ➖ Remove Row
+function removeRow(){
+  if(tbody.lastChild) tbody.removeChild(tbody.lastChild);
+  calculate();
+  save();
+}
+
+// 📊 Calculate
+function calculate(){
+  let t={family:0,car:0,my:0,her:0};
+
+  cols.forEach(c=>{
+    document.querySelectorAll("."+c).forEach(i=>{
+      t[c]+=parseFloat(i.value)||0;
+    });
+  });
+
+  f.innerText="$"+t.family;
+  c.innerText="$"+t.car;
+  m.innerText="$"+t.my;
+  h.innerText="$"+t.her;
+
+  let total=t.family+t.car+t.my+t.her;
+  g.innerText="$"+total;
+  w.innerText="$"+(total-t.car);
+
+  chart.data.datasets[0].data=[t.family,t.car,t.my,t.her];
+  chart.update();
+}
+
+// 💾 Save
+function save(){
+  let data=[];
+  document.querySelectorAll("#rows tr").forEach(tr=>{
+    data.push([...tr.querySelectorAll("input")].map(i=>i.value));
+  });
+  localStorage.setItem("exp",JSON.stringify(data));
+}
+
+// 📥 Load
+function load(){
+  let d=JSON.parse(localStorage.getItem("exp")||"[]");
+  tbody.innerHTML="";
+  if(d.length===0){
+    for(let i=0;i<6;i++) addRow();
+  } else d.forEach(r=>addRow(r));
+  calculate();
+}
+
+// 📸 FIXED DOWNLOAD ONLY (NO OTHER CHANGE)
+async function downloadImage(){
+
+  document.body.classList.add("exporting");
+
+  const table = document.getElementById("tableArea");
+  const chart = document.getElementById("chartArea");
+
+  await new Promise(r=>setTimeout(r,300));
+
+  const tableCanvas = await html2canvas(table,{scale:2,backgroundColor:"#fff"});
+  
+  await new Promise(r=>setTimeout(r,300));
+
+  const chartCanvas = await html2canvas(chart,{scale:2,backgroundColor:"#fff"});
+
+  document.body.classList.remove("exporting");
+
+  const a1=document.createElement("a");
+  a1.download="table.png";
+  a1.href=tableCanvas.toDataURL("image/png");
+  a1.click();
+
+  await new Promise(r=>setTimeout(r,600));
+
+  const a2=document.createElement("a");
+  a2.download="chart.png";
+  a2.href=chartCanvas.toDataURL("image/png");
+  a2.click();
+}
+
+// 📄 PDF Export
+async function downloadPDF(){
+
+  const { jsPDF } = window.jspdf;
+  const pdf=new jsPDF("p","mm","a4");
+
+  const table = document.getElementById("tableArea");
+  const chart = document.getElementById("chartArea");
+
+  const tableCanvas = await html2canvas(table,{scale:2,backgroundColor:"#fff"});
+  const chartCanvas = await html2canvas(chart,{scale:2,backgroundColor:"#fff"});
+
+  pdf.addImage(tableCanvas.toDataURL("image/png"),"PNG",0,0,210,0);
+  pdf.addPage();
+  pdf.addImage(chartCanvas.toDataURL("image/png"),"PNG",0,20,210,150);
+
+  pdf.save("report.pdf");
+}
+
+// 📊 Chart
+let chart=new Chart(document.getElementById("chart"),{
+  type:"doughnut",
+  data:{
+    labels:["Family","Car","My","Her"],
+    datasets:[{
+      data:[0,0,0,0],
+      backgroundColor:['#4e73df','#e74a3b','#1cc88a','#f6c23e']
+    }]
+  }
+});
+
+load();
+
+</script>
+
+</body>
+</html>
