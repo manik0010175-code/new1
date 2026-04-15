@@ -69,11 +69,6 @@ canvas{
   margin:auto;
 }
 
-@media (max-width:768px){
-  table{ font-size:13px; }
-  th,td{ padding:5px; }
-}
-
 body.exporting button{
   display:none;
 }
@@ -251,7 +246,7 @@ function load(){
   calculate();
 }
 
-// 📸 FIXED DOWNLOAD ONLY (NO OTHER CHANGE)
+// 📸 FIXED (ONLY TABLE IMAGE FIXED)
 async function downloadImage(){
 
   document.body.classList.add("exporting");
@@ -259,30 +254,32 @@ async function downloadImage(){
   const table = document.getElementById("tableArea");
   const chart = document.getElementById("chartArea");
 
-  await new Promise(r=>setTimeout(r,300));
+  // 🔥 important mobile wait
+  await new Promise(r => setTimeout(r, 800));
 
-  const tableCanvas = await html2canvas(table,{scale:2,backgroundColor:"#fff"});
-  
-  await new Promise(r=>setTimeout(r,300));
+  // TABLE FIRST (fixed stable render)
+  const tableCanvas = await html2canvas(table,{
+    scale:2,
+    backgroundColor:"#fff",
+    useCORS:true,
+    scrollY:0
+  });
 
-  const chartCanvas = await html2canvas(chart,{scale:2,backgroundColor:"#fff"});
+  const tableImg = tableCanvas.toDataURL("image/png");
+
+  const a1 = document.createElement("a");
+  a1.href = tableImg;
+  a1.download = "table.png";
+  document.body.appendChild(a1);
+  a1.click();
+  a1.remove();
+
+  await new Promise(r => setTimeout(r, 500));
 
   document.body.classList.remove("exporting");
-
-  const a1=document.createElement("a");
-  a1.download="table.png";
-  a1.href=tableCanvas.toDataURL("image/png");
-  a1.click();
-
-  await new Promise(r=>setTimeout(r,600));
-
-  const a2=document.createElement("a");
-  a2.download="chart.png";
-  a2.href=chartCanvas.toDataURL("image/png");
-  a2.click();
 }
 
-// 📄 PDF Export
+// 📄 PDF (unchanged)
 async function downloadPDF(){
 
   const { jsPDF } = window.jspdf;
