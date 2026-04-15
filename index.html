@@ -2,9 +2,12 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=1024">
 <title>Expense Dashboard</title>
+
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+
 <style>
 body { font-family: Arial; background:#eef2f7; margin:0; padding:10px; }
 h1 { text-align:center; }
@@ -56,6 +59,7 @@ tbody tr:nth-child(even) { background:#f9f9f9; }
 }
 </style>
 </head>
+
 <body>
 
 <h1>💰 Monthly Expense Dashboard</h1>
@@ -87,9 +91,10 @@ tbody tr:nth-child(even) { background:#f9f9f9; }
 <div class="card" style="text-align:center;">
   <button class="clear" onclick="clearData()">🗑 Clear All</button>
   <button class="print" onclick="window.print()">🖨 Print / Save PDF</button>
+  <button onclick="downloadImage()" style="background:#28a745;color:white;">📥 Download Image</button>
 </div>
 
-<div class="card table-container">
+<div class="card table-container" id="capture">
 <table>
 <thead>
 <tr>
@@ -130,7 +135,8 @@ tbody tr:nth-child(even) { background:#f9f9f9; }
 <script>
 const columns = ["family","car","my","her"];
 const tbody = document.getElementById("rows");
-let suggestionList = [];
+
+let suggestionList = JSON.parse(localStorage.getItem("suggestions") || "[]");
 
 // Add row
 function addRow(){
@@ -157,9 +163,10 @@ function addRow(){
         if(!suggestionList.includes(input.value.trim())){
           suggestionList.unshift(input.value.trim());
           if(suggestionList.length>3) suggestionList.pop();
+          localStorage.setItem("suggestions", JSON.stringify(suggestionList));
         }
       }
-      setTimeout(hideSuggestions, 100); // hide after click
+      setTimeout(hideSuggestions, 100);
     });
   });
 }
@@ -171,22 +178,22 @@ function showSuggestions(input){
   if(val==="") return;
   const matches = suggestionList.filter(s=>s.toLowerCase().includes(val)).slice(0,3);
   if(matches.length===0) return;
-  
+
   const box = document.createElement("div");
   box.className = "suggestion-box";
-  
+
   matches.forEach(m=>{
     const div = document.createElement("div");
     div.innerText = m;
     div.addEventListener("mousedown", function(e){
-      e.preventDefault(); // prevent blur before input update
+      e.preventDefault();
       input.value = m;
       hideSuggestions();
       calculate();
     });
     box.appendChild(div);
   });
-  
+
   input.parentNode.appendChild(box);
 }
 
@@ -229,9 +236,48 @@ function calculate(){
   document.getElementById("withoutCar").innerText=formatCurrency(grand-totals.car);
   chart.data.datasets[0].data=[totals.family,totals.car,totals.my,totals.her];
   chart.update();
+
+  saveData();
 }
 
-// Arrow + Enter navigation
+// SAVE DATA
+function saveData(){
+  let data=[];
+  document.querySelectorAll("#rows tr").forEach(tr=>{
+    let row=[];
+    tr.querySelectorAll("input").forEach(i=>row.push(i.value));
+    data.push(row);
+  });
+  localStorage.setItem("expenseData", JSON.stringify(data));
+}
+
+// LOAD DATA
+function loadData(){
+  let data=JSON.parse(localStorage.getItem("expenseData")||"[]");
+  if(data.length){
+    tbody.innerHTML="";
+    data.forEach(r=>{
+      addRow();
+      let tr=tbody.lastElementChild;
+      tr.querySelectorAll("input").forEach((i,index)=>{
+        i.value=r[index]||"";
+      });
+    });
+  }
+}
+
+// DOWNLOAD IMAGE
+function downloadImage(){
+  const element = document.getElementById("capture");
+  html2canvas(element,{scale:2}).then(canvas=>{
+    const link=document.createElement("a");
+    link.download="expense-dashboard.png";
+    link.href=canvas.toDataURL();
+    link.click();
+  });
+}
+
+// Arrow + Enter navigation (UNCHANGED)
 document.addEventListener("keydown", function(e){
   const inputs=Array.from(document.querySelectorAll("input"));
   const index=inputs.indexOf(document.activeElement);
@@ -261,9 +307,13 @@ function updateMonthPrint(){
 }
 window.onbeforeprint = updateMonthPrint;
 function changeMonth(){ updateMonthPrint(); }
-function clearData(){ if(confirm("Clear all data?")) location.reload(); }
+function clearData(){ if(confirm("Clear all data?")){ localStorage.clear(); location.reload(); } }
 
-window.onload=function(){ updateMonthPrint(); calculate(); }
+window.onload=function(){
+  loadData();
+  updateMonthPrint();
+  calculate();
+}
 </script>
 
 </body>
