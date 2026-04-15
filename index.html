@@ -4,95 +4,92 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Expense Dashboard</title>
-
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
-
 <style>
-body{
-  font-family: Arial;
-  background:#eef2f7;
-  padding:10px;
+body { font-family: Arial; background:#eef2f7; margin:0; padding:10px; }
+h1 { text-align:center; }
+.card { background:#fff; padding:10px; margin:10px 0; border-radius:10px; box-shadow:0 2px 6px rgba(0,0,0,0.1); }
+button { padding:8px 12px; margin:5px; border:none; border-radius:5px; cursor:pointer; }
+.clear { background:#dc3545; color:white; }
+.print { background:#007bff; color:white; }
+.table-container { overflow-x:auto; }
+table { width:100%; max-width:100%; margin:auto; border-collapse:collapse; table-layout: fixed; }
+th, td { border:1px solid #ddd; padding:6px; text-align:center; }
+th { background:#007bff; color:white; }
+input { width: 100%; border: none; text-align: center; font-size:14px; height:28px; box-sizing:border-box; }
+tfoot td { font-weight:bold; background:#f1f1f1; }
+#grandTotal { color:green; font-size:16px; }
+#withoutCar { color:red; }
+canvas { max-height:260px; width:100%; display:block; margin:auto; }
+tbody tr:nth-child(even) { background:#f9f9f9; }
+
+/* Print styles */
+@media print {
+  @page { size: A4 portrait; margin:10mm; }
+  body { background:white; margin:0; padding:0; zoom:1; }
+  .card { box-shadow:none; margin:2px 0; padding:4px; }
+  table { width:100%; font-size:10px; border:1px solid #ddd; margin:auto; }
+  th, td { padding:3px; border:1px solid #ddd; }
+  input { font-size:10px; height:18px; text-align:center; border:none; }
+  canvas { max-height:260px !important; width:100% !important; display:block; margin:auto; }
+  select, label, button { display:none; }
+  #monthPrint { display:block; font-size:12px; font-weight:bold; text-align:center; margin-bottom:5px; }
+  h1 { font-size:14px; }
+  .table-container { overflow-x:visible; }
 }
 
-.card{
-  background:#fff;
-  padding:10px;
-  margin:8px 0;
-  border-radius:8px;
+/* Suggestion box */
+.suggestion-box {
+  position: absolute;
+  background: #fff;
+  border: 1px solid #ddd;
+  z-index: 10;
+  max-height: 80px;
+  overflow-y: auto;
 }
-
-button{
-  padding:8px 12px;
-  margin:4px;
-  border:none;
-  border-radius:5px;
-  cursor:pointer;
+.suggestion-box div {
+  padding: 3px 6px;
+  cursor: pointer;
 }
-
-table{
-  width:100%;
-  border-collapse:collapse;
-  table-layout:fixed;
-}
-
-th,td{
-  border:1px solid #ddd;
-  padding:6px;
-  text-align:center;
-  word-break:break-word;
-}
-
-th{
-  background:#007bff;
-  color:white;
-}
-
-tfoot td{
-  font-weight:bold;
-  background:#f1f1f1;
-}
-
-input{
-  width:100%;
-  height:36px;
-  text-align:center;
-  border:none;
-  font-size:16px;
-}
-
-canvas{
-  width:100% !important;
-  height:auto !important;
-  display:block;
-  margin:auto;
-}
-
-body.exporting button{
-  display:none;
+.suggestion-box div:hover {
+  background: #f1f1f1;
 }
 </style>
 </head>
-
 <body>
 
-<div id="captureArea">
-
-<h2>💰 Expense Dashboard</h2>
+<h1>💰 Monthly Expense Dashboard</h1>
 
 <div class="card" style="text-align:center;">
-<input type="month" id="monthPicker">
+  <span id="monthPrint" style="display:none;"></span>
+  <label for="monthSelect">Select Month: </label>
+  <select id="monthSelect" onchange="changeMonth()">
+    <option value="01">January</option>
+    <option value="02">February</option>
+    <option value="03">March</option>
+    <option value="04">April</option>
+    <option value="05">May</option>
+    <option value="06">June</option>
+    <option value="07">July</option>
+    <option value="08">August</option>
+    <option value="09">September</option>
+    <option value="10">October</option>
+    <option value="11">November</option>
+    <option value="12">December</option>
+  </select>
 </div>
 
 <div class="card" style="text-align:center;">
-<button onclick="addRow()">➕ Add Row</button>
-<button onclick="removeRow()">➖ Remove Row</button>
-<button onclick="downloadImage()">📸 Download Images</button>
-<button onclick="downloadPDF()">📄 Download PDF</button>
+  <button onclick="addRow()">➕ Add Row</button>
+  <button onclick="removeRow()">➖ Remove Last Row</button>
 </div>
 
-<div class="card" id="tableArea">
+<div class="card" style="text-align:center;">
+  <button class="clear" onclick="clearData()">🗑 Clear All</button>
+  <button class="print" onclick="window.print()">🖨 Print / Save PDF</button>
+</div>
+
+<div class="card table-container">
 <table>
 <thead>
 <tr>
@@ -107,217 +104,166 @@ body.exporting button{
 
 <tfoot>
 <tr>
-<td>Total</td><td id="f">$0</td>
-<td>Total</td><td id="c">$0</td>
-<td>Total</td><td id="m">$0</td>
-<td>Total</td><td id="h">$0</td>
+<td>Total</td><td id="familyTotal">$0.00</td>
+<td>Total</td><td id="carTotal">$0.00</td>
+<td>Total</td><td id="myTotal">$0.00</td>
+<td>Total</td><td id="herTotal">$0.00</td>
 </tr>
+
 <tr>
-<td colspan="7">Grand</td>
-<td id="g">$0</td>
+<td colspan="7">Grand Total</td>
+<td id="grandTotal">$0.00</td>
 </tr>
+
 <tr>
 <td colspan="7">Without Car</td>
-<td id="w">$0</td>
+<td id="withoutCar">$0.00</td>
 </tr>
 </tfoot>
 </table>
 </div>
 
-<div class="card" id="chartArea">
-<canvas id="chart"></canvas>
-</div>
-
+<div class="card">
+  <canvas id="chart"></canvas>
 </div>
 
 <script>
+const columns = ["family","car","my","her"];
+const tbody = document.getElementById("rows");
+let suggestionList = [];
 
-const cols=["family","car","my","her"];
-const tbody=document.getElementById("rows");
-
-// ➕ Add Row
-function addRow(data=[]){
-  let tr=document.createElement("tr");
-
-  tr.innerHTML=`
-<td><input></td><td><input class="family"></td>
-<td><input></td><td><input class="car"></td>
-<td><input></td><td><input class="my"></td>
-<td><input></td><td><input class="her"></td>
-`;
-
+// Add row
+function addRow(){
+  const tr = document.createElement("tr");
+  tr.innerHTML = `
+<td><input class="text-input"></td><td><input class="family"></td>
+<td><input class="text-input"></td><td><input class="car"></td>
+<td><input class="text-input"></td><td><input class="my"></td>
+<td><input class="text-input"></td><td><input class="her"></td>`;
   tbody.appendChild(tr);
 
-  const inputs = tr.querySelectorAll("input");
-
-  inputs.forEach((i, idx) => {
-
-    if (data[idx]) i.value = data[idx];
-
-    i.addEventListener("input", () => {
-      i.value = i.value.replace(/[^0-9.]/g,'');
+  tr.querySelectorAll("input").forEach(input=>{
+    input.addEventListener("input", function(){
+      if(columns.some(c=>input.classList.contains(c))){
+        input.value = input.value.replace(/[^0-9.]/g,'');
+      } else {
+        showSuggestions(input);
+      }
       calculate();
-      save();
     });
 
-    i.addEventListener("keydown", (e) => {
-
-      const currentRow = i.closest("tr");
-      const allRows = Array.from(tbody.querySelectorAll("tr"));
-      const rowIndex = allRows.indexOf(currentRow);
-      const colIndex = Array.from(currentRow.querySelectorAll("input")).indexOf(i);
-
-      let target;
-
-      if (e.key === "ArrowRight") {
-        target = currentRow.querySelectorAll("input")[colIndex + 1];
+    input.addEventListener("blur", function(){
+      if(!columns.some(c=>input.classList.contains(c)) && input.value.trim()!==""){
+        if(!suggestionList.includes(input.value.trim())){
+          suggestionList.unshift(input.value.trim());
+          if(suggestionList.length>3) suggestionList.pop();
+        }
       }
-
-      if (e.key === "ArrowLeft") {
-        target = currentRow.querySelectorAll("input")[colIndex - 1];
-      }
-
-      if (e.key === "ArrowDown" || e.key === "Enter") {
-        const nextRow = allRows[rowIndex + 1];
-        if (nextRow) target = nextRow.querySelectorAll("input")[colIndex];
-      }
-
-      if (e.key === "ArrowUp") {
-        const prevRow = allRows[rowIndex - 1];
-        if (prevRow) target = prevRow.querySelectorAll("input")[colIndex];
-      }
-
-      if (target) {
-        e.preventDefault();
-        target.focus();
-      }
-
+      setTimeout(hideSuggestions, 100); // hide after click
     });
-
   });
 }
 
-// ➖ Remove Row
+// Suggestion functions
+function showSuggestions(input){
+  hideSuggestions();
+  const val = input.value.toLowerCase();
+  if(val==="") return;
+  const matches = suggestionList.filter(s=>s.toLowerCase().includes(val)).slice(0,3);
+  if(matches.length===0) return;
+  
+  const box = document.createElement("div");
+  box.className = "suggestion-box";
+  
+  matches.forEach(m=>{
+    const div = document.createElement("div");
+    div.innerText = m;
+    div.addEventListener("mousedown", function(e){
+      e.preventDefault(); // prevent blur before input update
+      input.value = m;
+      hideSuggestions();
+      calculate();
+    });
+    box.appendChild(div);
+  });
+  
+  input.parentNode.appendChild(box);
+}
+
+function hideSuggestions(){
+  document.querySelectorAll(".suggestion-box").forEach(b=>b.remove());
+}
+
+// Remove last row
 function removeRow(){
-  if(tbody.lastChild) tbody.removeChild(tbody.lastChild);
-  calculate();
-  save();
+  const rows = tbody.querySelectorAll("tr");
+  if(rows.length>0 && confirm("Remove last row?")){
+    rows[rows.length-1].remove();
+    calculate();
+  }
 }
 
-// 📊 Calculate
+// initial 10 rows
+for(let i=0;i<10;i++) addRow();
+
+function formatCurrency(val){
+  return "$"+Number(val).toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2});
+}
+
+// Chart
+let chart = new Chart(document.getElementById("chart"), {
+  type:'doughnut',
+  data:{ labels:['Family','Car','My','Her'], datasets:[{ data:[0,0,0,0], backgroundColor:['#4e73df','#e74a3b','#1cc88a','#f6c23e'], borderWidth:2 }] },
+  options:{ plugins:{ legend:{ position:'bottom' } }, cutout:'60%' }
+});
+
+// Calculation
 function calculate(){
-  let t={family:0,car:0,my:0,her:0};
-
-  cols.forEach(c=>{
-    document.querySelectorAll("."+c).forEach(i=>{
-      t[c]+=parseFloat(i.value)||0;
-    });
+  let totals={family:0,car:0,my:0,her:0};
+  columns.forEach(col=>{
+    document.querySelectorAll("."+col).forEach(i=>{ totals[col]+=parseFloat(i.value)||0; });
+    document.getElementById(col+"Total").innerText=formatCurrency(totals[col]);
   });
-
-  f.innerText="$"+t.family;
-  c.innerText="$"+t.car;
-  m.innerText="$"+t.my;
-  h.innerText="$"+t.her;
-
-  let total=t.family+t.car+t.my+t.her;
-  g.innerText="$"+total;
-  w.innerText="$"+(total-t.car);
-
-  chart.data.datasets[0].data=[t.family,t.car,t.my,t.her];
+  let grand=totals.family+totals.car+totals.my+totals.her;
+  document.getElementById("grandTotal").innerText=formatCurrency(grand);
+  document.getElementById("withoutCar").innerText=formatCurrency(grand-totals.car);
+  chart.data.datasets[0].data=[totals.family,totals.car,totals.my,totals.her];
   chart.update();
 }
 
-// 💾 Save
-function save(){
-  let data=[];
-  document.querySelectorAll("#rows tr").forEach(tr=>{
-    data.push([...tr.querySelectorAll("input")].map(i=>i.value));
-  });
-  localStorage.setItem("exp",JSON.stringify(data));
-}
-
-// 📥 Load
-function load(){
-  let d=JSON.parse(localStorage.getItem("exp")||"[]");
-  tbody.innerHTML="";
-  if(d.length===0){
-    for(let i=0;i<6;i++) addRow();
-  } else d.forEach(r=>addRow(r));
-  calculate();
-}
-
-// 📸 FIXED TABLE DOWNLOAD (100% WORKING)
-async function downloadImage(){
-
-  document.body.classList.add("exporting");
-
-  const table = document.getElementById("tableArea");
-
-  await new Promise(r => setTimeout(r, 800));
-
-  // 🔥 clone fix (MOST IMPORTANT)
-  const clone = table.cloneNode(true);
-  clone.style.position = "absolute";
-  clone.style.left = "-9999px";
-  clone.style.top = "0";
-  document.body.appendChild(clone);
-
-  await new Promise(r => setTimeout(r, 500));
-
-  const canvas = await html2canvas(clone,{
-    scale:2,
-    backgroundColor:"#fff",
-    useCORS:true,
-    scrollY:0
-  });
-
-  document.body.removeChild(clone);
-
-  document.body.classList.remove("exporting");
-
-  const img = canvas.toDataURL("image/png");
-
-  const a = document.createElement("a");
-  a.href = img;
-  a.download = "table.png";
-  document.body.appendChild(a);
-  a.click();
-  a.remove();
-}
-
-// 📄 PDF Export
-async function downloadPDF(){
-
-  const { jsPDF } = window.jspdf;
-  const pdf=new jsPDF("p","mm","a4");
-
-  const table = document.getElementById("tableArea");
-  const chart = document.getElementById("chartArea");
-
-  const tableCanvas = await html2canvas(table,{scale:2,backgroundColor:"#fff"});
-  const chartCanvas = await html2canvas(chart,{scale:2,backgroundColor:"#fff"});
-
-  pdf.addImage(tableCanvas.toDataURL("image/png"),"PNG",0,0,210,0);
-  pdf.addPage();
-  pdf.addImage(chartCanvas.toDataURL("image/png"),"PNG",0,20,210,150);
-
-  pdf.save("report.pdf");
-}
-
-// 📊 Chart
-let chart=new Chart(document.getElementById("chart"),{
-  type:"doughnut",
-  data:{
-    labels:["Family","Car","My","Her"],
-    datasets:[{
-      data:[0,0,0,0],
-      backgroundColor:['#4e73df','#e74a3b','#1cc88a','#f6c23e']
-    }]
+// Arrow + Enter navigation
+document.addEventListener("keydown", function(e){
+  const inputs=Array.from(document.querySelectorAll("input"));
+  const index=inputs.indexOf(document.activeElement);
+  if(e.key==="ArrowRight" && inputs[index+1]) inputs[index+1].focus();
+  if(e.key==="ArrowLeft" && inputs[index-1]) inputs[index-1].focus();
+  if(e.key==="ArrowDown" && inputs[index+8]) inputs[index+8].focus();
+  if(e.key==="ArrowUp" && inputs[index-8]) inputs[index-8].focus();
+  if(e.key==="Enter"){
+    e.preventDefault();
+    const colIndex=Array.from(e.target.closest('tr').querySelectorAll('input')).indexOf(e.target);
+    const allRows=Array.from(tbody.querySelectorAll('tr'));
+    let currRowIndex=allRows.indexOf(e.target.closest('tr'));
+    let nextRow=allRows[currRowIndex+1];
+    if(!nextRow){ addRow(); nextRow=tbody.lastElementChild; }
+    const nextInput=nextRow.querySelectorAll('input')[colIndex];
+    if(nextInput) nextInput.focus();
   }
 });
 
-load();
+// Month display
+function updateMonthPrint(){
+  const monthSelect=document.getElementById("monthSelect");
+  const monthText=monthSelect.options[monthSelect.selectedIndex].text;
+  const year=new Date().getFullYear();
+  document.getElementById("monthPrint").innerText=monthText+" "+year;
+  document.getElementById("monthPrint").style.display="block";
+}
+window.onbeforeprint = updateMonthPrint;
+function changeMonth(){ updateMonthPrint(); }
+function clearData(){ if(confirm("Clear all data?")) location.reload(); }
 
+window.onload=function(){ updateMonthPrint(); calculate(); }
 </script>
 
 </body>
