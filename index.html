@@ -155,7 +155,7 @@ function addRow(data=[]){
     if (data[idx]) i.value = data[idx];
 
     i.addEventListener("input", () => {
-      i.value = i.value.replace(/[^0-9.]/g, '');
+      i.value = i.value.replace(/[^0-9.]/g,'');
       calculate();
       save();
     });
@@ -246,40 +246,46 @@ function load(){
   calculate();
 }
 
-// 📸 FIXED (ONLY TABLE IMAGE FIXED)
+// 📸 FIXED TABLE DOWNLOAD (100% WORKING)
 async function downloadImage(){
 
   document.body.classList.add("exporting");
 
   const table = document.getElementById("tableArea");
-  const chart = document.getElementById("chartArea");
 
-  // 🔥 important mobile wait
   await new Promise(r => setTimeout(r, 800));
 
-  // TABLE FIRST (fixed stable render)
-  const tableCanvas = await html2canvas(table,{
+  // 🔥 clone fix (MOST IMPORTANT)
+  const clone = table.cloneNode(true);
+  clone.style.position = "absolute";
+  clone.style.left = "-9999px";
+  clone.style.top = "0";
+  document.body.appendChild(clone);
+
+  await new Promise(r => setTimeout(r, 500));
+
+  const canvas = await html2canvas(clone,{
     scale:2,
     backgroundColor:"#fff",
     useCORS:true,
     scrollY:0
   });
 
-  const tableImg = tableCanvas.toDataURL("image/png");
-
-  const a1 = document.createElement("a");
-  a1.href = tableImg;
-  a1.download = "table.png";
-  document.body.appendChild(a1);
-  a1.click();
-  a1.remove();
-
-  await new Promise(r => setTimeout(r, 500));
+  document.body.removeChild(clone);
 
   document.body.classList.remove("exporting");
+
+  const img = canvas.toDataURL("image/png");
+
+  const a = document.createElement("a");
+  a.href = img;
+  a.download = "table.png";
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
 }
 
-// 📄 PDF (unchanged)
+// 📄 PDF Export
 async function downloadPDF(){
 
   const { jsPDF } = window.jspdf;
