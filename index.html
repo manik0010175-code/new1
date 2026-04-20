@@ -1,319 +1,337 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=1024">
-<title>Expense Dashboard</title>
-
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+<title>Uber Pro Max Statement</title>
 
 <style>
-body { font-family: Arial; background:#eef2f7; margin:0; padding:10px; }
-h1 { text-align:center; }
-.card { background:#fff; padding:10px; margin:10px 0; border-radius:10px; box-shadow:0 2px 6px rgba(0,0,0,0.1); }
-button { padding:8px 12px; margin:5px; border:none; border-radius:5px; cursor:pointer; }
-.clear { background:#dc3545; color:white; }
-.print { background:#007bff; color:white; }
-.table-container { overflow-x:auto; }
-table { width:100%; max-width:100%; margin:auto; border-collapse:collapse; table-layout: fixed; }
-th, td { border:1px solid #ddd; padding:6px; text-align:center; }
-th { background:#007bff; color:white; }
-input { width: 100%; border: none; text-align: center; font-size:14px; height:28px; box-sizing:border-box; }
-tfoot td { font-weight:bold; background:#f1f1f1; }
-#grandTotal { color:green; font-size:16px; }
-#withoutCar { color:red; }
-canvas { max-height:260px; width:100%; display:block; margin:auto; }
-tbody tr:nth-child(even) { background:#f9f9f9; }
-
-/* Print styles */
-@media print {
-  @page { size: A4 portrait; margin:10mm; }
-  body { background:white; margin:0; padding:0; zoom:1; }
-  .card { box-shadow:none; margin:2px 0; padding:4px; }
-  table { width:100%; font-size:10px; border:1px solid #ddd; margin:auto; }
-  th, td { padding:3px; border:1px solid #ddd; }
-  input { font-size:10px; height:18px; text-align:center; border:none; }
-  canvas { max-height:260px !important; width:100% !important; display:block; margin:auto; }
-  select, label, button { display:none; }
-  #monthPrint { display:block; font-size:12px; font-weight:bold; text-align:center; margin-bottom:5px; }
-  h1 { font-size:14px; }
-  .table-container { overflow-x:visible; }
+body { 
+    font-family: Arial; 
+    padding:10px; 
+    margin:0; 
+    background:#f5f5f5;
+}
+table {
+  table-layout: fixed;
 }
 
-/* Suggestion box */
-.suggestion-box {
-  position: absolute;
-  background: #fff;
-  border: 1px solid #ddd;
-  z-index: 10;
-  max-height: 80px;
-  overflow-y: auto;
+th:nth-child(1), td:nth-child(1) { width: 120px; } /* DATE */
+th:nth-child(2), td:nth-child(2) { width: 120px; } /* GAS */
+th:nth-child(3), td:nth-child(3) { width: 120px; } /* OTHERS */
+th:nth-child(4), td:nth-child(4) { width: 120px; } /* EARNING */
+th:nth-child(5), td:nth-child(5) { width: 120px; } /* TYPE */
+
+.btn-group{
+    display:flex;
+    flex-wrap:wrap;
+    gap:6px;
+    margin-bottom:10px;
 }
-.suggestion-box div {
-  padding: 3px 6px;
-  cursor: pointer;
+
+button{
+    flex:1 1 45%;
+    padding:10px;
+    font-size:14px;
+    border:none;
+    border-radius:6px;
+    background:#222;
+    color:#fff;
 }
-.suggestion-box div:hover {
-  background: #f1f1f1;
+
+.table-wrap{
+    overflow-x:auto;
+    background:#fff;
+    border-radius:8px;
+}
+
+table{
+    width:100%;
+    border-collapse:collapse;
+    font-size:12px;
+    min-width:520px;
+}
+
+th,td{
+    border:1px solid #ddd;
+    padding:6px;
+    text-align:center;
+}
+
+th{
+    background:#000;
+    color:#fff;
+    position:sticky;
+    top:0;
+}
+
+input,select{
+    width:95%;
+    padding:6px;
+    font-size:14px;
+    border:none;
+    outline:none;
+    text-align:center;
+    background:transparent;
+    appearance:none;
+}
+
+.total{
+    background:#eaeaea;
+    font-weight:bold;
+}
+
+@media(max-width:600px){
+    button{ font-size:13px; }
+}
+
+@media print{
+    button{ display:none; }
 }
 </style>
 </head>
 
 <body>
 
-<h1>💰 Monthly Expense Dashboard</h1>
+<h2 style="text-align:center;">UBER / LYFT PRO MAX</h2>
 
-<div class="card" style="text-align:center;">
-  <span id="monthPrint" style="display:none;"></span>
-  <label for="monthSelect">Select Month: </label>
-  <select id="monthSelect" onchange="changeMonth()">
-    <option value="01">January</option>
-    <option value="02">February</option>
-    <option value="03">March</option>
-    <option value="04">April</option>
-    <option value="05">May</option>
-    <option value="06">June</option>
-    <option value="07">July</option>
-    <option value="08">August</option>
-    <option value="09">September</option>
-    <option value="10">October</option>
-    <option value="11">November</option>
-    <option value="12">December</option>
-  </select>
+<div class="btn-group">
+<button onclick="addRow()">➕ ADD</button>
+<button onclick="deleteRow()">❌ DELETE</button>
+<button onclick="saveData()">💾 SAVE</button>
+<button onclick="clearData()">🗑️ CLEAR</button>
+<button onclick="takeScreenshot()">📸 IMAGE</button>
+<button onclick="window.print()">🖨️ PDF</button>
 </div>
 
-<div class="card" style="text-align:center;">
-  <button onclick="addRow()">➕ Add Row</button>
-  <button onclick="removeRow()">➖ Remove Last Row</button>
-</div>
+<div class="table-wrap">
+<table id="captureArea">
 
-<div class="card" style="text-align:center;">
-  <button class="clear" onclick="clearData()">🗑 Clear All</button>
-  <button class="print" onclick="window.print()">🖨 Print / Save PDF</button>
-  <button onclick="downloadImage()" style="background:#28a745;color:white;">📥 Download Image</button>
-</div>
-
-<div class="card table-container" id="capture">
-<table>
-<thead>
 <tr>
-<th>Family</th><th>$</th>
-<th>Car</th><th>$</th>
-<th>My</th><th>$</th>
-<th>Her</th><th>$</th>
+<th>DATE</th>
+<th>GAS</th>
+<th>OTHERS</th>
+<th>EARNING</th>
+<th>TYPE</th>
 </tr>
-</thead>
 
-<tbody id="rows"></tbody>
+<tbody id="mainRows"></tbody>
 
-<tfoot>
-<tr>
-<td>Total</td><td id="familyTotal">$0.00</td>
-<td>Total</td><td id="carTotal">$0.00</td>
-<td>Total</td><td id="myTotal">$0.00</td>
-<td>Total</td><td id="herTotal">$0.00</td>
+<tr class="total">
+<td>TOTAL GAS</td><td><input id="gasTotal" readonly></td><td colspan="3"></td>
+</tr>
+
+<tr class="total">
+<td>TOTAL OTHERS</td><td><input id="othersTotal" readonly></td><td colspan="3"></td>
+</tr>
+
+<tr class="total">
+<td>TOTAL EARNING</td><td><input id="earningTotal" readonly></td><td colspan="3"></td>
 </tr>
 
 <tr>
-<td colspan="7">Grand Total</td>
-<td id="grandTotal">$0.00</td>
+<td>START MILES</td>
+<td><input id="startMiles"></td>
+<td>CLOSE MILES</td>
+<td><input id="closeMiles"></td>
+<td><input id="totalMiles" readonly></td>
+</tr>
+
+<tr class="total">
+<td colspan="2">MILE COST (0.30 × MILES)</td>
+<td colspan="3"><input id="mileCost" readonly></td>
 </tr>
 
 <tr>
-<td colspan="7">Without Car</td>
-<td id="withoutCar">$0.00</td>
+<td>TOLL START</td><td><input id="tollStart"></td>
+<td>TOLL CLOSE</td><td><input id="tollClose"></td>
+<td><input id="tollSpent" readonly></td>
 </tr>
-</tfoot>
+
+<tr class="total">
+<td colspan="2">TOTAL COST</td>
+<td colspan="3"><input id="totalCost" readonly></td>
+</tr>
+
+<tr class="total">
+<td colspan="2">CURRENT EARNING</td>
+<td colspan="3"><input id="currentEarning" readonly></td>
+</tr>
+
+<tr class="total">
+<td colspan="2">PROFIT</td>
+<td colspan="3"><input id="weeklyProfit" readonly></td>
+</tr>
+
 </table>
 </div>
 
-<div class="card">
-  <canvas id="chart"></canvas>
-</div>
+<script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
 
 <script>
-const columns = ["family","car","my","her"];
-const tbody = document.getElementById("rows");
 
-let suggestionList = JSON.parse(localStorage.getItem("suggestions") || "[]");
+const payTypes=[
+"CASH","UBER","LYFT","ZELLE","CASHAPP","VENMO","SQUARE",
+"C-CASH","AMAZON","EMPOWER","DOORDASH","WALMART","ALL-MIX"
+];
 
-// Add row
-function addRow(){
-  const tr = document.createElement("tr");
-  tr.innerHTML = `
-<td><input class="text-input"></td><td><input class="family"></td>
-<td><input class="text-input"></td><td><input class="car"></td>
-<td><input class="text-input"></td><td><input class="my"></td>
-<td><input class="text-input"></td><td><input class="her"></td>`;
-  tbody.appendChild(tr);
+const tbody=document.getElementById("mainRows");
 
-  tr.querySelectorAll("input").forEach(input=>{
-    input.addEventListener("input", function(){
-      if(columns.some(c=>input.classList.contains(c))){
-        input.value = input.value.replace(/[^0-9.]/g,'');
-      } else {
-        showSuggestions(input);
-      }
-      calculate();
-    });
+/* ROW CREATE */
+function createRow(){
+    let tr=document.createElement("tr");
 
-    input.addEventListener("blur", function(){
-      if(!columns.some(c=>input.classList.contains(c)) && input.value.trim()!==""){
-        if(!suggestionList.includes(input.value.trim())){
-          suggestionList.unshift(input.value.trim());
-          if(suggestionList.length>3) suggestionList.pop();
-          localStorage.setItem("suggestions", JSON.stringify(suggestionList));
-        }
-      }
-      setTimeout(hideSuggestions, 100);
-    });
-  });
+    let options=payTypes.map(t=>`<option>${t}</option>`).join("");
+
+    tr.innerHTML=`
+        <td><input class="date" type="date"></td>
+        <td><input class="gas"></td>
+        <td><input class="others"></td>
+        <td><input class="earning"></td>
+        <td><select>${options}</select></td>
+    `;
+    return tr;
 }
 
-// Suggestion functions
-function showSuggestions(input){
-  hideSuggestions();
-  const val = input.value.toLowerCase();
-  if(val==="") return;
-  const matches = suggestionList.filter(s=>s.toLowerCase().includes(val)).slice(0,3);
-  if(matches.length===0) return;
+/* INIT ROWS */
+for(let i=0;i<2;i++) tbody.appendChild(createRow());
 
-  const box = document.createElement("div");
-  box.className = "suggestion-box";
+function addRow(){ tbody.appendChild(createRow()); }
 
-  matches.forEach(m=>{
-    const div = document.createElement("div");
-    div.innerText = m;
-    div.addEventListener("mousedown", function(e){
-      e.preventDefault();
-      input.value = m;
-      hideSuggestions();
-      calculate();
-    });
-    box.appendChild(div);
-  });
-
-  input.parentNode.appendChild(box);
+function deleteRow(){
+    if(tbody.rows.length>1)
+        tbody.removeChild(tbody.lastElementChild);
 }
 
-function hideSuggestions(){
-  document.querySelectorAll(".suggestion-box").forEach(b=>b.remove());
+function f(n){ return (n||0).toFixed(2); }
+
+/* CALC */
+function calculateAll(){
+
+    let gas=[...document.querySelectorAll(".gas")]
+        .reduce((t,i)=>t+(+i.value||0),0);
+
+    let others=[...document.querySelectorAll(".others")]
+        .reduce((t,i)=>t+(+i.value||0),0);
+
+    let earn=[...document.querySelectorAll(".earning")]
+        .reduce((t,i)=>t+(+i.value||0),0);
+
+    let start = +startMiles.value || 0;
+    let close = +closeMiles.value || 0;
+
+    let miles = close - start;
+    let mileCostValue = miles * 0.30;
+
+    let toll=Math.max(0,(+tollStart.value||0)-(+tollClose.value||0));
+
+    let totalCost=gas+others+mileCostValue+toll;
+    let current=earn-totalCost;
+
+    gasTotal.value=f(gas);
+    othersTotal.value=f(others);
+    earningTotal.value=f(earn);
+
+    totalMiles.value=f(miles);
+    mileCost.value=f(mileCostValue);
+
+    tollSpent.value=f(toll);
+    totalCost.value=f(totalCost);
+
+    currentEarning.value=f(current);
+    currentEarning.style.color=current>=0?"green":"red";
+
+    weeklyProfit.value=f(current);
 }
 
-// Remove last row
-function removeRow(){
-  const rows = tbody.querySelectorAll("tr");
-  if(rows.length>0 && confirm("Remove last row?")){
-    rows[rows.length-1].remove();
-    calculate();
-  }
-}
-
-// initial 10 rows
-for(let i=0;i<10;i++) addRow();
-
-function formatCurrency(val){
-  return "$"+Number(val).toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2});
-}
-
-// Chart
-let chart = new Chart(document.getElementById("chart"), {
-  type:'doughnut',
-  data:{ labels:['Family','Car','My','Her'], datasets:[{ data:[0,0,0,0], backgroundColor:['#4e73df','#e74a3b','#1cc88a','#f6c23e'], borderWidth:2 }] },
-  options:{ plugins:{ legend:{ position:'bottom' } }, cutout:'60%' }
-});
-
-// Calculation
-function calculate(){
-  let totals={family:0,car:0,my:0,her:0};
-  columns.forEach(col=>{
-    document.querySelectorAll("."+col).forEach(i=>{ totals[col]+=parseFloat(i.value)||0; });
-    document.getElementById(col+"Total").innerText=formatCurrency(totals[col]);
-  });
-  let grand=totals.family+totals.car+totals.my+totals.her;
-  document.getElementById("grandTotal").innerText=formatCurrency(grand);
-  document.getElementById("withoutCar").innerText=formatCurrency(grand-totals.car);
-  chart.data.datasets[0].data=[totals.family,totals.car,totals.my,totals.her];
-  chart.update();
-
-  saveData();
-}
-
-// SAVE DATA
+/* SAVE */
 function saveData(){
-  let data=[];
-  document.querySelectorAll("#rows tr").forEach(tr=>{
-    let row=[];
-    tr.querySelectorAll("input").forEach(i=>row.push(i.value));
-    data.push(row);
-  });
-  localStorage.setItem("expenseData", JSON.stringify(data));
+    let data=[...document.querySelectorAll("input,select")]
+        .map(i=>i.value);
+
+    localStorage.setItem("uberData",JSON.stringify(data));
 }
 
-// LOAD DATA
+/* LOAD */
 function loadData(){
-  let data=JSON.parse(localStorage.getItem("expenseData")||"[]");
-  if(data.length){
-    tbody.innerHTML="";
-    data.forEach(r=>{
-      addRow();
-      let tr=tbody.lastElementChild;
-      tr.querySelectorAll("input").forEach((i,index)=>{
-        i.value=r[index]||"";
-      });
+    let data=JSON.parse(localStorage.getItem("uberData")||"[]");
+
+    document.querySelectorAll("input,select").forEach((i,idx)=>{
+        if(data[idx]) i.value=data[idx];
     });
-  }
 }
 
-// DOWNLOAD IMAGE
-function downloadImage(){
-  const element = document.getElementById("capture");
-  html2canvas(element,{scale:2}).then(canvas=>{
-    const link=document.createElement("a");
-    link.download="expense-dashboard.png";
-    link.href=canvas.toDataURL();
-    link.click();
-  });
+/* CLEAR */
+function clearData(){
+    if(confirm("Clear all data?")){
+        localStorage.removeItem("uberData");
+        location.reload();
+    }
 }
 
-// Arrow + Enter navigation (UNCHANGED)
-document.addEventListener("keydown", function(e){
-  const inputs=Array.from(document.querySelectorAll("input"));
-  const index=inputs.indexOf(document.activeElement);
-  if(e.key==="ArrowRight" && inputs[index+1]) inputs[index+1].focus();
-  if(e.key==="ArrowLeft" && inputs[index-1]) inputs[index-1].focus();
-  if(e.key==="ArrowDown" && inputs[index+8]) inputs[index+8].focus();
-  if(e.key==="ArrowUp" && inputs[index-8]) inputs[index-8].focus();
-  if(e.key==="Enter"){
-    e.preventDefault();
-    const colIndex=Array.from(e.target.closest('tr').querySelectorAll('input')).indexOf(e.target);
-    const allRows=Array.from(tbody.querySelectorAll('tr'));
-    let currRowIndex=allRows.indexOf(e.target.closest('tr'));
-    let nextRow=allRows[currRowIndex+1];
-    if(!nextRow){ addRow(); nextRow=tbody.lastElementChild; }
-    const nextInput=nextRow.querySelectorAll('input')[colIndex];
-    if(nextInput) nextInput.focus();
-  }
+/* SCREENSHOT */
+function takeScreenshot(){
+    html2canvas(document.querySelector("#captureArea"))
+    .then(canvas=>{
+        let a=document.createElement("a");
+        a.download="statement.png";
+        a.href=canvas.toDataURL();
+        a.click();
+    });
+}
+
+/* NAVIGATION (ENTER + ARROW FIXED) */
+document.addEventListener("keydown",(e)=>{
+
+    let cur=document.activeElement;
+    if(!["INPUT","SELECT"].includes(cur.tagName)) return;
+
+    let cell=cur.closest("td");
+    let row=cur.closest("tr");
+    let col=[...row.children].indexOf(cell);
+    let next=null;
+
+    if(e.key==="Enter" || e.key==="ArrowDown"){
+        e.preventDefault();
+
+        let nextRow=row.nextElementSibling;
+
+        if(!nextRow){
+            addRow();
+            nextRow=row.nextElementSibling;
+        }
+
+        next=nextRow?.children[col]?.querySelector("input,select");
+    }
+
+    else if(e.key==="ArrowUp"){
+        e.preventDefault();
+        let prev=row.previousElementSibling;
+        next=prev?.children[col]?.querySelector("input,select");
+    }
+
+    else if(e.key==="ArrowRight"){
+        e.preventDefault();
+        next=row.children[col+1]?.querySelector("input,select");
+    }
+
+    else if(e.key==="ArrowLeft"){
+        e.preventDefault();
+        next=row.children[col-1]?.querySelector("input,select");
+    }
+
+    if(next) next.focus();
 });
 
-// Month display
-function updateMonthPrint(){
-  const monthSelect=document.getElementById("monthSelect");
-  const monthText=monthSelect.options[monthSelect.selectedIndex].text;
-  const year=new Date().getFullYear();
-  document.getElementById("monthPrint").innerText=monthText+" "+year;
-  document.getElementById("monthPrint").style.display="block";
-}
-window.onbeforeprint = updateMonthPrint;
-function changeMonth(){ updateMonthPrint(); }
-function clearData(){ if(confirm("Clear all data?")){ localStorage.clear(); location.reload(); } }
+/* AUTO */
+document.addEventListener("input",()=>{
+    calculateAll();
+    saveData();
+});
 
-window.onload=function(){
-  loadData();
-  updateMonthPrint();
-  calculate();
-}
+window.onload=()=>{
+    loadData();
+    calculateAll();
+};
+
 </script>
 
 </body>
